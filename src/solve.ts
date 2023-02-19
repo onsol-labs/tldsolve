@@ -1,3 +1,4 @@
+import {getParsedNftAccountsByOwner} from './metaplex/nfts';
 import {
     getDomainKey as getSPLDomainKey,
     NameRegistryState,
@@ -12,7 +13,11 @@ import {
 } from '@onsol/tldparser';
 import {PublicKey, Connection} from '@solana/web3.js';
 import {Domain} from './model';
-import {findTldHouse} from './pda';
+import {findNameHouse, findNameRecord, findTldHouse} from './pda';
+import pLimit from 'p-limit';
+import {NftRecord} from './types/nft_record';
+import {chunkArrayPublicKeys} from './utils';
+import {BN} from 'bn.js';
 
 export class TldSolve {
     constructor(private readonly connection: Connection) {}
@@ -191,23 +196,141 @@ export class TldSolve {
         return domainName;
     }
 
-    // async batchResolveAllDomains(
-    //   userAccount: PublicKey | string,
-    //   domainType: 'ANS' | 'SOL' | 'ANY',
-    //   limitRPS: number = 10
-    // ): Promise<Domain[] | undefined> {
-    //   if (typeof userAccount == 'string') {
-    //     userAccount = new PublicKey(userAccount);
-    //   }
-    //   let accounts: string[] = [];
-    //   if (domainType === 'ANS' || domainType === 'ANY') {
-    //     const ansDomains = (
-    //       await this.getAllDomainsFromUser(userAccount, 'ANY')
-    //     );
-    //     if (domainType === 'ANS') {
-    //       if (!ansDomains) return;
-    //       accounts = ansDomains.map((keys: PublicKey) => keys.toString());
-    //     }
-    //   }
-    // }
+    async batchResolveANSDomains(
+        userAccount: PublicKey | string,
+        heliusApiKey?: string,
+        tld: 'abc' | 'bonk' | 'poor' = 'abc',
+        limitRPS: number = 10,
+    ): Promise<Domain[] | undefined> {
+        if (typeof userAccount == 'string') {
+            userAccount = new PublicKey(userAccount);
+        }
+        const [tldHouse] = findTldHouse('.' + tld);
+        let accounts: string[] = [];
+        const ansDomains = await this.getAllDomainsFromUserFromTld(
+            userAccount,
+            tld,
+        );
+        if (!ansDomains) return;
+        accounts = ansDomains.map((keys: PublicKey) => keys.toString());
+        let nftRecords: NftRecord[] = [];
+        let activeNfts = [];
+        const limit = pLimit(limitRPS);
+        if (heliusApiKey) {
+            const [nameHouse] = findNameHouse(tldHouse);
+            const userNfts = await getParsedNftAccountsByOwner(
+                userAccount,
+                this.connection,
+                heliusApiKey,
+            );
+
+            activeNfts = userNfts.filter(
+                (t: any) =>
+                    t?.onChainData?.collection &&
+                    t?.onChainData?.collection.verified &&
+                    // poor domains verified collection.
+                    t?.onChainData?.collection?.key?.toString() ===
+                        nameHouse.toString(),
+            );
+
+            const nftRecordsSet = new Set<NftRecord>();
+            const activeRecordPromises = activeNfts.map((activeAccount: any) =>
+                limit(async () => {
+                    let domain = activeAccount.offChainData?.name;
+                    if (!domain) {
+                        domain = activeAccount.onChainData.data.name;
+                    }
+                    const {pubkey: nameAccount} = await getDomainKey(
+                        `${domain}.${tld}`,
+                    );
+                    const [nftRecordAccount] = findNameRecord(
+                        nameAccount,
+                        nameHouse,
+                    );
+                    const nftRecordData = await NftRecord.fromAccountAddress(
+                        this.connection,
+                        nftRecordAccount,
+                    );
+                    nftRecordsSet.add(nftRecordData);
+                }),
+            );
+
+            await Promise.all(activeRecordPromises);
+            nftRecords = [...nftRecordsSet.values()];
+        }
+        let nameAccountsNftRecords: string[] = [];
+        if (nftRecords) {
+            nameAccountsNftRecords = nftRecords?.map((nftRecord: NftRecord) =>
+                nftRecord.nameAccount.toString(),
+            );
+        }
+        // there is a bug that some accounts are not public keys but are strings and are not unique.
+        const fetchableAccounts: PublicKey[] = [];
+        [...nameAccountsNftRecords, ...accounts].forEach(keys =>
+            fetchableAccounts.push(new PublicKey(keys)),
+        );
+        const chunkedFetchableAccounts: PublicKey[][] = chunkArrayPublicKeys(
+            fetchableAccounts,
+            100,
+        );
+
+        const fetchedAccountDetails: Domain[] = [];
+        for (let fetchableAccountsChunked in chunkedFetchableAccounts) {
+            const accounts = await this.connection.getMultipleAccountsInfo(
+                chunkedFetchableAccounts[fetchableAccountsChunked],
+            );
+            const promises = accounts.map((account, index) =>
+                limit(async () => {
+                    if (!account?.data) return;
+                    const domainRecord =
+                        NameRecordHeader.fromAccountInfo(account);
+                    if (!domainRecord) return;
+                    const domainName = (
+                        await this.reverseLookupNameAccount(
+                            chunkedFetchableAccounts[fetchableAccountsChunked][
+                                index
+                            ],
+                        )
+                    )?.trim();
+                    let nftDetails: any = {isNft: false};
+                    if (!heliusApiKey && !nftRecords[index].nftMintAccount) {
+                        nftDetails = {isNft: false};
+                    } else {
+                        try {
+                            nftDetails = {
+                                isNft: true,
+                                nft: nftRecords[index].nftMintAccount,
+                                metadata: activeNfts[index],
+                            };
+                        } catch {}
+                    }
+                    const domainDetails: Domain = {
+                        parentName: domainRecord[0].parentName,
+                        owner: domainRecord[0].owner,
+                        expiresAt:
+                            new BN(domainRecord[0].expiresAt).toNumber() * 1000,
+                        domainName: domainName,
+                        domainAccount:
+                            chunkedFetchableAccounts[fetchableAccountsChunked][
+                                index
+                            ],
+                        ...nftDetails,
+                    };
+                    fetchedAccountDetails.push(domainDetails);
+                }),
+            );
+
+            await Promise.all(promises);
+        }
+        if (fetchedAccountDetails.length > 0) {
+            fetchedAccountDetails.sort((a, b) =>
+                a.domainName.localeCompare(b.domainName, undefined, {
+                    numeric: true,
+                    sensitivity: 'base',
+                }),
+            );
+        }
+
+        return fetchedAccountDetails;
+    }
 }
