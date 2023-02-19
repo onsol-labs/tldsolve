@@ -293,17 +293,15 @@ export class TldSolve {
                         )
                     )?.trim();
                     let nftDetails: any = {isNft: false};
-                    if (!heliusApiKey && !nftRecords[index].nftMintAccount) {
-                        nftDetails = {isNft: false};
-                    } else {
-                        try {
-                            nftDetails = {
-                                isNft: true,
-                                nft: nftRecords[index].nftMintAccount,
-                                metadata: activeNfts[index],
-                            };
-                        } catch {}
-                    }
+                    if (heliusApiKey && nftRecords[index].nftMintAccount) {
+                      try {
+                          nftDetails = {
+                              isNft: true,
+                              nft: nftRecords[index].nftMintAccount,
+                              metadata: activeNfts[index],
+                          };
+                      } catch {}
+                    } 
                     const domainDetails: Domain = {
                         parentName: domainRecord[0].parentName,
                         owner: domainRecord[0].owner,
