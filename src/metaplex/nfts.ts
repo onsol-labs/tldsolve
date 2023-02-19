@@ -31,8 +31,8 @@ const getMetadataDatas = async (
 };
 
 export const getParsedNftAccountsByOwner = async (
-    owner: PublicKey,
     connection: Connection,
+    owner: PublicKey,
     heliusApiKey: string,
 ) => {
     const {value: splAccounts} = await connection.getParsedTokenAccountsByOwner(

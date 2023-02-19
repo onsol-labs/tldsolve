@@ -12,3 +12,4 @@ export const NAME_HOUSE_PROGRAM_ID = new PublicKey(
 export const TLD_HOUSE_PREFIX = 'tld_house';
 export const NAME_HOUSE_PREFIX = 'name_house';
 export const NFT_RECORD_PREFIX = 'nft_record';
+export const COLLECTION_PREFIX = "name_collection";

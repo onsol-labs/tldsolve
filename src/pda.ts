@@ -5,6 +5,7 @@ import {
     NFT_RECORD_PREFIX,
     TLD_HOUSE_PREFIX,
     NAME_HOUSE_PROGRAM_ID,
+    COLLECTION_PREFIX,
 } from './constants';
 
 export function findTldHouse(tldString: string) {
@@ -34,4 +35,11 @@ export function findNameRecord(
         ],
         NAME_HOUSE_PROGRAM_ID,
     );
+}
+
+export function findCollectionMint(tldHouse: PublicKey) {
+  return PublicKey.findProgramAddressSync(
+      [Buffer.from(COLLECTION_PREFIX), tldHouse.toBuffer()],
+      NAME_HOUSE_PROGRAM_ID,
+  );
 }

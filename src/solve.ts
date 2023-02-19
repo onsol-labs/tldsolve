@@ -13,7 +13,7 @@ import {
 } from '@onsol/tldparser';
 import {PublicKey, Connection} from '@solana/web3.js';
 import {Domain} from './model';
-import {findNameHouse, findNameRecord, findTldHouse} from './pda';
+import {findCollectionMint, findNameHouse, findNameRecord, findTldHouse} from './pda';
 import pLimit from 'p-limit';
 import {NftRecord} from './types/nft_record';
 import {chunkArrayPublicKeys} from './utils';
@@ -218,9 +218,10 @@ export class TldSolve {
         const limit = pLimit(limitRPS);
         if (heliusApiKey) {
             const [nameHouse] = findNameHouse(tldHouse);
+            const [tldCollection] = findCollectionMint(tldHouse);
             const userNfts = await getParsedNftAccountsByOwner(
-                userAccount,
                 this.connection,
+                userAccount,
                 heliusApiKey,
             );
 
@@ -230,7 +231,7 @@ export class TldSolve {
                     t?.onChainData?.collection.verified &&
                     // poor domains verified collection.
                     t?.onChainData?.collection?.key?.toString() ===
-                        nameHouse.toString(),
+                    tldCollection.toString(),
             );
 
             const nftRecordsSet = new Set<NftRecord>();
