@@ -1,5 +1,5 @@
-import {Connection, PublicKey} from '@solana/web3.js';
-import {SPL_TOKEN_PROGRAM_ID} from '../constants';
+import { Connection, PublicKey } from '@solana/web3.js';
+import { SPL_TOKEN_PROGRAM_ID } from '../constants';
 import axios from 'axios';
 
 const getMetadataDatas = async (
@@ -12,7 +12,7 @@ const getMetadataDatas = async (
 
         while (nftAddresses.length > 0)
             axiosRequests.push(
-                axios.post(url, {mintAccounts: nftAddresses.splice(0, 100)}),
+                axios.post(url, { mintAccounts: nftAddresses.splice(0, 100) }),
             );
 
         return await axios.all(axiosRequests).then(responses => {
@@ -26,7 +26,7 @@ const getMetadataDatas = async (
             return metadata;
         });
     } else {
-        return await axios.post(url, {mintAccounts: nftAddresses});
+        return await axios.post(url, { mintAccounts: nftAddresses });
     }
 };
 
@@ -35,12 +35,10 @@ export const getParsedNftAccountsByOwner = async (
     owner: PublicKey,
     heliusApiKey: string,
 ) => {
-    const {value: splAccounts} = await connection.getParsedTokenAccountsByOwner(
-        owner,
-        {
+    const { value: splAccounts } =
+        await connection.getParsedTokenAccountsByOwner(owner, {
             programId: SPL_TOKEN_PROGRAM_ID,
-        },
-    );
+        });
 
     const nftAccounts = splAccounts
         .filter(t => {
@@ -68,12 +66,10 @@ export const getParsedTokenAccountsByOwner = async (
     owner: PublicKey,
     connection: Connection,
 ): Promise<OnsolTokenType[]> => {
-    const {value: splAccounts} = await connection.getParsedTokenAccountsByOwner(
-        owner,
-        {
+    const { value: splAccounts } =
+        await connection.getParsedTokenAccountsByOwner(owner, {
             programId: SPL_TOKEN_PROGRAM_ID,
-        },
-    );
+        });
 
     const nftAccounts = splAccounts
         .filter(t => {
@@ -85,7 +81,7 @@ export const getParsedTokenAccountsByOwner = async (
         .map(t => {
             const mintAddress = t.account?.data?.parsed?.info?.mint;
             const amount = t.account?.data?.parsed?.info?.tokenAmount?.uiAmount;
-            return {mintAddress, amount};
+            return { mintAddress, amount };
         });
 
     return nftAccounts;

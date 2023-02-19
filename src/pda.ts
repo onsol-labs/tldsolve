@@ -1,5 +1,5 @@
-import {TLD_HOUSE_PROGRAM_ID} from '@onsol/tldparser';
-import {PublicKey} from '@solana/web3.js';
+import { TLD_HOUSE_PROGRAM_ID } from '@onsol/tldparser';
+import { PublicKey } from '@solana/web3.js';
 import {
     NAME_HOUSE_PREFIX,
     NFT_RECORD_PREFIX,
@@ -38,8 +38,8 @@ export function findNameRecord(
 }
 
 export function findCollectionMint(tldHouse: PublicKey) {
-  return PublicKey.findProgramAddressSync(
-      [Buffer.from(COLLECTION_PREFIX), tldHouse.toBuffer()],
-      NAME_HOUSE_PROGRAM_ID,
-  );
+    return PublicKey.findProgramAddressSync(
+        [Buffer.from(COLLECTION_PREFIX), tldHouse.toBuffer()],
+        NAME_HOUSE_PROGRAM_ID,
+    );
 }

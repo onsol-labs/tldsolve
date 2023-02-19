@@ -9,7 +9,7 @@ import * as beet from '@metaplex-foundation/beet';
 import * as beetSolana from '@metaplex-foundation/beet-solana';
 import * as web3 from '@solana/web3.js';
 
-import {Tag, tagBeet} from './tag';
+import { Tag, tagBeet } from './tag';
 
 /**
  * Arguments used to create {@link NftRecord}

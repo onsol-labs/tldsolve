@@ -1,4 +1,4 @@
-import {getParsedNftAccountsByOwner} from './metaplex/nfts';
+import { getParsedNftAccountsByOwner } from './metaplex/nfts';
 import {
     getDomainKey as getSPLDomainKey,
     NameRegistryState,
@@ -11,13 +11,18 @@ import {
     NameRecordHeader,
     TldParser,
 } from '@onsol/tldparser';
-import {PublicKey, Connection} from '@solana/web3.js';
-import {Domain} from './model';
-import {findCollectionMint, findNameHouse, findNameRecord, findTldHouse} from './pda';
+import { PublicKey, Connection } from '@solana/web3.js';
+import { Domain } from './model';
+import {
+    findCollectionMint,
+    findNameHouse,
+    findNameRecord,
+    findTldHouse,
+} from './pda';
 import pLimit from 'p-limit';
-import {NftRecord} from './types/nft_record';
-import {chunkArrayPublicKeys} from './utils';
-import {BN} from 'bn.js';
+import { NftRecord } from './types/nft_record';
+import { chunkArrayPublicKeys } from './utils';
+import { BN } from 'bn.js';
 
 export class TldSolve {
     constructor(private readonly connection: Connection) {}
@@ -29,15 +34,15 @@ export class TldSolve {
         const tldName = domainSplit.at(-1);
         if (tldName === '.sol') {
             // solana
-            const {pubkey} = await getSPLDomainKey(domain);
-            const {registry} = await NameRegistryState.retrieve(
+            const { pubkey } = await getSPLDomainKey(domain);
+            const { registry } = await NameRegistryState.retrieve(
                 this.connection,
                 pubkey,
             );
             return registry;
         }
         // ans
-        const {pubkey} = await getDomainKey(domain);
+        const { pubkey } = await getDomainKey(domain);
         const nameRecordHeader = await NameRecordHeader.fromAccountAddress(
             this.connection,
             pubkey,
@@ -50,15 +55,15 @@ export class TldSolve {
         const tldName = domainSplit.at(-1);
         if (tldName === '.sol') {
             // solana
-            const {pubkey} = await getSPLDomainKey(domain);
-            const {registry} = await NameRegistryState.retrieve(
+            const { pubkey } = await getSPLDomainKey(domain);
+            const { registry } = await NameRegistryState.retrieve(
                 this.connection,
                 pubkey,
             );
             return registry.owner;
         }
         // ans
-        const {pubkey} = await getDomainKey(domain);
+        const { pubkey } = await getDomainKey(domain);
         const nameRecordHeader = await NameRecordHeader.fromAccountAddress(
             this.connection,
             pubkey,
@@ -80,11 +85,11 @@ export class TldSolve {
 
         if (tldName === 'sol') {
             // solana
-            const {pubkey} = await getSPLDomainKey(domain);
+            const { pubkey } = await getSPLDomainKey(domain);
             return pubkey;
         }
         // ans
-        const {pubkey} = await getDomainKey(domain);
+        const { pubkey } = await getDomainKey(domain);
         return pubkey;
     }
 
@@ -231,7 +236,7 @@ export class TldSolve {
                     t?.onChainData?.collection.verified &&
                     // poor domains verified collection.
                     t?.onChainData?.collection?.key?.toString() ===
-                    tldCollection.toString(),
+                        tldCollection.toString(),
             );
 
             const nftRecordsSet = new Set<NftRecord>();
@@ -241,7 +246,7 @@ export class TldSolve {
                     if (!domain) {
                         domain = activeAccount.onChainData.data.name;
                     }
-                    const {pubkey: nameAccount} = await getDomainKey(
+                    const { pubkey: nameAccount } = await getDomainKey(
                         `${domain}.${tld}`,
                     );
                     const [nftRecordAccount] = findNameRecord(
@@ -293,16 +298,16 @@ export class TldSolve {
                             ],
                         )
                     )?.trim();
-                    let nftDetails: any = {isNft: false};
+                    let nftDetails: any = { isNft: false };
                     if (heliusApiKey && nftRecords[index].nftMintAccount) {
-                      try {
-                          nftDetails = {
-                              isNft: true,
-                              nft: nftRecords[index].nftMintAccount,
-                              metadata: activeNfts[index],
-                          };
-                      } catch {}
-                    } 
+                        try {
+                            nftDetails = {
+                                isNft: true,
+                                nft: nftRecords[index].nftMintAccount,
+                                metadata: activeNfts[index],
+                            };
+                        } catch {}
+                    }
                     const domainDetails: Domain = {
                         parentName: domainRecord[0].parentName,
                         owner: domainRecord[0].owner,
