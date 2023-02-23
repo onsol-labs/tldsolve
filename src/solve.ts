@@ -4,6 +4,7 @@ import {
     NameRegistryState,
     getAllDomains as getAllSPLDomains,
     performReverseLookup as performSPLReverseLookup,
+    getFavoriteDomain,
 } from '@bonfida/spl-name-service';
 import {
     findOwnedNameAccountsForUser,
@@ -23,16 +24,43 @@ import pLimit from 'p-limit';
 import { NftRecord } from './types/nft_record';
 import { chunkArrayPublicKeys } from './utils';
 import { BN } from 'bn.js';
+import { MainDomain } from './types/main_domain';
+import { Protocol } from './types/protocol';
 
 export class TldSolve {
     constructor(private readonly connection: Connection) {}
+
+    async getMainDomain(
+        userAccount: PublicKey | string,
+        protocol: Protocol = Protocol.ANS,
+    ): Promise<MainDomain | undefined> {
+        if (typeof userAccount == 'string') {
+            userAccount = new PublicKey(userAccount);
+        }
+        if (protocol === Protocol.SNS) {
+            // solana
+            const favoriteDomain = await getFavoriteDomain(
+                this.connection,
+                userAccount,
+            );
+            return {
+                nameAccount: favoriteDomain.domain,
+                tld: '.sol',
+                domain: favoriteDomain.reverse,
+            };
+        }
+        // ans
+        const parser = new TldParser(this.connection);
+        const mainDomain = await parser.getMainDomain(userAccount);
+        return mainDomain;
+    }
 
     async resolveDomain(
         domain: string,
     ): Promise<NameRecordHeader | NameRegistryState | undefined> {
         const domainSplit = domain.split('.');
         const tldName = domainSplit.at(-1);
-        if (tldName === '.sol') {
+        if (tldName === 'sol') {
             // solana
             const { pubkey } = await getSPLDomainKey(domain);
             const { registry } = await NameRegistryState.retrieve(
@@ -53,7 +81,7 @@ export class TldSolve {
     async getOwnerFromDomain(domain: string): Promise<PublicKey | undefined> {
         const domainSplit = domain.split('.');
         const tldName = domainSplit.at(-1);
-        if (tldName === '.sol') {
+        if (tldName === 'sol') {
             // solana
             const { pubkey } = await getSPLDomainKey(domain);
             const { registry } = await NameRegistryState.retrieve(
@@ -95,33 +123,38 @@ export class TldSolve {
 
     async getAllDomainsFromUser(
         userAccount: PublicKey | string,
-        domainType: 'ANS' | 'SOL' | 'ANY',
+        protocol: Protocol = Protocol.ANS,
     ): Promise<PublicKey[] | undefined> {
         if (typeof userAccount == 'string') {
             userAccount = new PublicKey(userAccount);
         }
-        if (domainType === 'ANS') {
-            const domainsANS = await findOwnedNameAccountsForUser(
-                this.connection,
-                userAccount,
-                undefined,
-            );
-            return domainsANS;
-        } else if (domainType === 'SOL') {
-            const domainsSPL = await getAllSPLDomains(
-                this.connection,
-                userAccount,
-            );
-            return domainsSPL;
+        switch (protocol) {
+            case Protocol.ANS:
+                const domainsANS = await findOwnedNameAccountsForUser(
+                    this.connection,
+                    userAccount,
+                    undefined,
+                );
+                return domainsANS;
+            case Protocol.SNS:
+                const domainsSPL = await getAllSPLDomains(
+                    this.connection,
+                    userAccount,
+                );
+                return domainsSPL;
+            default:
+                const domainsANSDefault = await findOwnedNameAccountsForUser(
+                    this.connection,
+                    userAccount,
+                    undefined,
+                );
+                const domainsSNSDefault = await getAllSPLDomains(
+                    this.connection,
+                    userAccount,
+                );
+                const allDomains = domainsANSDefault.concat(domainsSNSDefault);
+                return allDomains;
         }
-        const domainsANS = await findOwnedNameAccountsForUser(
-            this.connection,
-            userAccount,
-            undefined,
-        );
-        const domainsSPL = await getAllSPLDomains(this.connection, userAccount);
-        const allDomains = domainsANS.concat(domainsSPL);
-        return allDomains;
     }
 
     async getAllDomainsFromUserFromTld(
@@ -148,14 +181,16 @@ export class TldSolve {
 
     async reverseLookupNameAccountWithKnownParent(
         nameAccount: PublicKey | string,
-        parentAccountOwner: PublicKey | string,
+        parentAccountOwner?: PublicKey | string,
     ): Promise<string | undefined> {
         const parser = new TldParser(this.connection);
-        const domainName = await parser.reverseLookupNameAccount(
-            nameAccount,
-            parentAccountOwner,
-        );
-        if (!domainName) {
+        if (parentAccountOwner) {
+            const domainName = await parser.reverseLookupNameAccount(
+                nameAccount,
+                parentAccountOwner,
+            );
+            return domainName;
+        } else {
             if (typeof nameAccount == 'string') {
                 nameAccount = new PublicKey(nameAccount);
             }
@@ -165,40 +200,63 @@ export class TldSolve {
             );
             return domainName;
         }
-        return domainName;
     }
 
     async reverseLookupNameAccount(
         nameAccount: PublicKey | string,
+        protocol: Protocol = Protocol.ANS,
     ): Promise<string | undefined> {
         if (typeof nameAccount == 'string') {
             nameAccount = new PublicKey(nameAccount);
         }
-        const nameRecordHeader = await NameRecordHeader.fromAccountAddress(
-            this.connection,
-            nameAccount,
-        );
-        if (!nameRecordHeader) return;
-        const parser = new TldParser(this.connection);
-        const tld = await parser.getTldFromParentAccount(
-            nameRecordHeader.parentName,
-        );
-        const [tldHouse] = findTldHouse('.' + tld);
-        const domainName = await parser.reverseLookupNameAccount(
-            nameAccount,
-            tldHouse,
-        );
-        if (!domainName) {
-            if (typeof nameAccount == 'string') {
-                nameAccount = new PublicKey(nameAccount);
-            }
-            const domainName = await performSPLReverseLookup(
-                this.connection,
-                nameAccount,
-            );
-            return domainName;
+        switch (protocol) {
+            case Protocol.ANS:
+                const nameRecordHeaderANS =
+                    await NameRecordHeader.fromAccountAddress(
+                        this.connection,
+                        nameAccount,
+                    );
+                if (!nameRecordHeaderANS) return;
+                const tldParser = new TldParser(this.connection);
+                const tldFound = await tldParser.getTldFromParentAccount(
+                    nameRecordHeaderANS.parentName,
+                );
+                const [tldHouseKey] = findTldHouse(tldFound);
+                const domainNameANS = await tldParser.reverseLookupNameAccount(
+                    nameAccount,
+                    tldHouseKey,
+                );
+                return domainNameANS;
+            case Protocol.SNS:
+                let domainNameSNS = await performSPLReverseLookup(
+                    this.connection,
+                    nameAccount,
+                );
+                return domainNameSNS;
+            default:
+                let domainName: string;
+                domainName = await performSPLReverseLookup(
+                    this.connection,
+                    nameAccount,
+                );
+                if (domainName) return domainName;
+                const nameRecordHeader =
+                    await NameRecordHeader.fromAccountAddress(
+                        this.connection,
+                        nameAccount,
+                    );
+                if (!nameRecordHeader) return;
+                const parser = new TldParser(this.connection);
+                const tld = await parser.getTldFromParentAccount(
+                    nameRecordHeader.parentName,
+                );
+                const [tldHouse] = findTldHouse(tld);
+                domainName = await parser.reverseLookupNameAccount(
+                    nameAccount,
+                    tldHouse,
+                );
+                return domainName;
         }
-        return domainName;
     }
 
     async batchResolveANSDomains(
@@ -299,20 +357,23 @@ export class TldSolve {
                         )
                     )?.trim();
                     let nftDetails: any = { isNft: false };
-                    if (heliusApiKey && nftRecords[index].nftMintAccount) {
-                        try {
+                    try {
+                        if (
+                            heliusApiKey &&
+                            nftRecords.length > 0 &&
+                            nftRecords[index]?.nftMintAccount
+                        ) {
                             nftDetails = {
                                 isNft: true,
                                 nft: nftRecords[index].nftMintAccount,
                                 metadata: activeNfts[index],
                             };
-                        } catch {}
-                    }
+                        }
+                    } catch {}
                     const domainDetails: Domain = {
-                        parentName: domainRecord[0].parentName,
-                        owner: domainRecord[0].owner,
-                        expiresAt:
-                            new BN(domainRecord[0].expiresAt).toNumber() * 1000,
+                        parentName: domainRecord.parentName,
+                        owner: domainRecord.owner,
+                        expiresAt: domainRecord.expiresAt,
                         domainName: domainName,
                         domainAccount:
                             chunkedFetchableAccounts[fetchableAccountsChunked][
