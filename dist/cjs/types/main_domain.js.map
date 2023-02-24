@@ -1,0 +1,1 @@
+{"version":3,"file":"main_domain.js","sourceRoot":"","sources":["../../../src/types/main_domain.ts"],"names":[],"mappings":"","sourcesContent":["import { PublicKey } from '@solana/web3.js';\n\nexport type MainDomain = {\n    nameAccount: PublicKey;\n    tld: string;\n    domain: string;\n};\n"]}
