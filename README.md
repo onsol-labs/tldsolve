@@ -54,8 +54,10 @@ const ownerDomains = await solver.getAllDomainsFromUserFromTld(owner, tld);
 // reverse lookup for nameAccount public key, to retrieve domain name.
 // works for both ANS and SNS.
 // known parentAccount in most cases is the TldHouse Account. leave empty for SNS.
+const [AbcTldHouse] = findTldHouse('.abc');
 const domain = await solver.reverseLookupNameAccountWithKnownParent(
     nameAccount,
+    AbcTldHouse,
 );
 // domain name
 

@@ -73,7 +73,7 @@ export class TldSolve {
     }
 
     /**
-     * resolves any domain name.
+     * resolves any domain name to its raw state.
      *
      * @async
      * @param {string} domain to be resolved.
@@ -328,7 +328,7 @@ export class TldSolve {
     }
 
     /**
-     * Batch resolve any ANS domains held by the userAccount
+     * Batch resolve ANS domains held by the userAccount
      *
      * @async
      * @param {(PublicKey | string)} userAccount domain owner
