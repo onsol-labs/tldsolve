@@ -23,6 +23,7 @@
     "build:esm:watch": "concurrently \"tsc --project tsconfig.esm.json --watch\"",
     "pretty": "prettier --check '{,{src,tests}/**/}*.{j,t}s'",
     "pretty:fix": "prettier --write '{,{src,tests}/**/}*.{j,t}s'",
+    "prepare": "husky install",
     "test": "jest"
   },
   "dependencies": {
@@ -55,6 +56,19 @@
     "jest-jasmine2": "^29.3.1",
     "prettier": "^2.3.0",
     "ts-jest": "^29.0.5",
+    "husky": "^8.0.3",
+    "lint-staged": "^13.1.0",
     "typescript": "^4.9.3"
+  },
+  "lint-staged": {
+    "*.{js,jsx,css,md,json}": "prettier --write --cache",
+    "*.{ts,tsx}": [
+      "prettier --write --cache"
+    ]
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "yarn lint-staged"
+    }
   }
 }
