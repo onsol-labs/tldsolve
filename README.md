@@ -65,10 +65,6 @@ const domain = await solver.reverseLookupNameAccountWithKnownParent(
 // Protocol.ANS | Protocol.SNS | Protocol.ALL
 const domain = await solver.reverseLookupNameAccount(nameAccount);
 // domain name
-
-// Batch resolve ANS domains held by the userAccount
-const domains = await solver.batchResolveANSDomains(owner);
-// list of all domains and NFTs owned, with a model of Domain (check src/model/Domain.ts)
 ```
 
 ## Active ANS Tlds
