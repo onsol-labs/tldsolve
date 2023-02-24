@@ -5,7 +5,7 @@ Solana multi Name Service protocol solver.
 currently integrated:
 
 1. All ANS domains.
-2. SNS domains.
+2. SNS domain.
 3. More to come.
 
 ## Examples:
@@ -69,7 +69,7 @@ const domains = await solver.batchResolveANSDomains(owner);
 // list of all domains and NFTs owned, with a model of Domain (check src/model/Domain.ts)
 ```
 
-## Active Tlds
+## Active ANS Tlds
 
 ```
 TLD     => parentAccountKey
