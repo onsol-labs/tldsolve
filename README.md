@@ -1,6 +1,6 @@
 # TLD Solve
 
-Solana multi Name Service protocol solver.
+Solana Multi Name Service Protocol Solver.
 
 currently integrated:
 
@@ -79,3 +79,13 @@ TLD     => parentAccountKey
 .poor   => 8err4ThuTiZo9LbozHAvMrzXUmyPWj9urnMo38vC6FdQ
 .abc    => 3pSeaEVTcKLkXPCpZHDpHUMWAogYFZgKSiVtyvqcgo8a
 ```
+
+# Contribute
+
+1. fork repo, make a new branch.
+2. install dependencies `yarn`
+3. add changes. please comment your code as much as you can.
+4. follow the code style of the project, including indentation.
+5. add tests in tests/ folder and do `yarn test`
+6. add or change the documentation as needed.
+7. do a PR.

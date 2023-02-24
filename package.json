@@ -1,7 +1,7 @@
 {
     "name": "@onsol/tldsolve",
     "version": "1.0.0",
-    "description": "solve domains/identities on Solana Blockchain",
+    "description": "Solana Multi Name Service Protocol Solver.",
     "repository": "https://github.com/onsol-labs/tldsolve",
     "license": "MIT",
     "files": [
