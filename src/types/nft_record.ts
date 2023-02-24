@@ -18,7 +18,7 @@ import { Tag, tagBeet } from './tag';
  */
 export type NftRecordArgs = {
     tag: Tag;
-    nonce: number;
+    bump: number;
     nameAccount: web3.PublicKey;
     owner: web3.PublicKey;
     nftMintAccount: web3.PublicKey;
@@ -36,7 +36,7 @@ export const nftRecordDiscriminator = [174, 190, 114, 100, 177, 14, 90, 254];
 export class NftRecord implements NftRecordArgs {
     private constructor(
         readonly tag: Tag,
-        readonly nonce: number,
+        readonly bump: number,
         readonly nameAccount: web3.PublicKey,
         readonly owner: web3.PublicKey,
         readonly nftMintAccount: web3.PublicKey,
@@ -49,7 +49,7 @@ export class NftRecord implements NftRecordArgs {
     static fromArgs(args: NftRecordArgs) {
         return new NftRecord(
             args.tag,
-            args.nonce,
+            args.bump,
             args.nameAccount,
             args.owner,
             args.nftMintAccount,
@@ -83,20 +83,6 @@ export class NftRecord implements NftRecordArgs {
             throw new Error(`Unable to find NftRecord account at ${address}`);
         }
         return NftRecord.fromAccountInfo(accountInfo, 0)[0];
-    }
-
-    /**
-     * Provides a {@link web3.Connection.getProgramAccounts} config builder,
-     * to fetch accounts matching filters that can be specified via that builder.
-     *
-     * @param programId - the program that owns the accounts we are filtering
-     */
-    static gpaBuilder(
-        programId: web3.PublicKey = new web3.PublicKey(
-            'NH3uX6FtVE2fNREAioP7hm5RaozotZxeL6khU1EHx51',
-        ),
-    ) {
-        return beetSolana.GpaBuilder.fromStruct(programId, nftRecordBeet);
     }
 
     /**
@@ -157,7 +143,7 @@ export class NftRecord implements NftRecordArgs {
     pretty() {
         return {
             tag: 'Tag.' + Tag[this.tag],
-            nonce: this.nonce,
+            bump: this.bump,
             nameAccount: this.nameAccount.toBase58(),
             owner: this.owner.toBase58(),
             nftMintAccount: this.nftMintAccount.toBase58(),
@@ -179,7 +165,7 @@ export const nftRecordBeet = new beet.BeetStruct<
     [
         ['accountDiscriminator', beet.uniformFixedSizeArray(beet.u8, 8)],
         ['tag', tagBeet],
-        ['nonce', beet.u8],
+        ['bump', beet.u8],
         ['nameAccount', beetSolana.publicKey],
         ['owner', beetSolana.publicKey],
         ['nftMintAccount', beetSolana.publicKey],
