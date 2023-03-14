@@ -1,7 +1,6 @@
 import { NameRegistryState } from '@bonfida/spl-name-service';
 import { NameRecordHeader } from '@onsol/tldparser';
 import { PublicKey, Connection } from '@solana/web3.js';
-import { Domain } from './model';
 import { MainDomain } from './types/main_domain';
 import { Protocol } from './types/protocol';
 /**
@@ -29,7 +28,7 @@ export declare class TldSolve {
         protocol?: Protocol,
     ): Promise<MainDomain | undefined>;
     /**
-     * resolves any domain name.
+     * resolves any domain name to its raw state.
      *
      * @async
      * @param {string} domain to be resolved.
@@ -104,21 +103,5 @@ export declare class TldSolve {
         nameAccount: PublicKey | string,
         protocol?: Protocol,
     ): Promise<string | undefined>;
-    /**
-     * Batch resolve any ANS domains held by the userAccount
-     *
-     * @async
-     * @param {(PublicKey | string)} userAccount domain owner
-     * @param {?string} [heliusApiKey] optional helius api key.
-     * @param {('abc' | 'bonk' | 'poor')} [tld='abc']
-     * @param {number} [limitRPS=10] limits depend on your rpc connection rps limit/3.
-     * @returns {(Promise<Domain[] | undefined>)}
-     */
-    batchResolveANSDomains(
-        userAccount: PublicKey | string,
-        heliusApiKey?: string,
-        tld?: 'abc' | 'bonk' | 'poor',
-        limitRPS?: number,
-    ): Promise<Domain[] | undefined>;
 }
 //# sourceMappingURL=solve.d.ts.map

@@ -111,12 +111,9 @@ export class TldSolve {
             return registry.owner;
         }
         // ans
-        const { pubkey } = await getDomainKey(domain);
-        const nameRecordHeader = await NameRecordHeader.fromAccountAddress(
-            this.connection,
-            pubkey,
-        );
-        return nameRecordHeader?.owner;
+        const parser = new TldParser(this.connection);
+        const owner = await parser.getOwnerFromDomainTld(domain);
+        return owner;
     }
 
     /**

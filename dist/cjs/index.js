@@ -39,6 +39,5 @@ __exportStar(require('./utils'), exports);
 __exportStar(require('./constants'), exports);
 __exportStar(require('./solve'), exports);
 __exportStar(require('./pda'), exports);
-__exportStar(require('./model'), exports);
 __exportStar(require('./types'), exports);
 //# sourceMappingURL=index.js.map

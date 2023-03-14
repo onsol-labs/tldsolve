@@ -4,7 +4,6 @@ import { Connection, PublicKey } from '@solana/web3.js';
 import { findTldHouse } from '../src/pda';
 
 const RPC_URL = '';
-const HELIUS_API = '';
 const connection = new Connection(RPC_URL);
 const owner = new PublicKey('2EGGxj2qbNAJNgLCPKca8sxZYetyTjnoRspTPjzN2D67');
 
@@ -14,7 +13,7 @@ describe('tldSolve tests', () => {
         // ANS Domains
         const allDomains = await solver.getAllDomainsFromUser(owner);
         // console.log("ANSDomains: ", allDomains?.length)
-        expect(allDomains).toHaveLength(20);
+        expect(allDomains).toHaveLength(4);
     });
     it('should perform retrieval of all sol user domains', async () => {
         const solver = new TldSolve(connection);
@@ -23,7 +22,7 @@ describe('tldSolve tests', () => {
             Protocol.SNS,
         );
         // console.log("SPLDomains: ", allDomains?.length)
-        expect(allDomains).toHaveLength(15);
+        expect(allDomains).toHaveLength(14);
     });
     it('should perform retrieval of all user domains', async () => {
         const solver = new TldSolve(connection);
@@ -32,7 +31,7 @@ describe('tldSolve tests', () => {
             Protocol.ALL,
         );
         // console.log("AllDomains: ", allDomains?.length)
-        expect(allDomains).toHaveLength(35);
+        expect(allDomains).toHaveLength(18);
     });
     it('should perform retrieval of ans main domain', async () => {
         const solver = new TldSolve(connection);
@@ -115,7 +114,7 @@ describe('tldSolve tests', () => {
             'abc',
         );
         // console.log("allAbcDomains: ", allAbcDomains?.length)
-        expect(allAbcDomains).toHaveLength(17);
+        expect(allAbcDomains).toHaveLength(1);
     });
     it('should perform retrieval of allSNSDomains owner in sol', async () => {
         const solver = new TldSolve(connection);
@@ -124,7 +123,7 @@ describe('tldSolve tests', () => {
             'sol',
         );
         // console.log("allSNSDomains: ", allSNSDomains?.length)
-        expect(allSNSDomains).toHaveLength(15);
+        expect(allSNSDomains).toHaveLength(14);
     });
     it('should perform retrieval of domain name from ANS nameAccount and parent account', async () => {
         const solver = new TldSolve(connection);
@@ -170,5 +169,13 @@ describe('tldSolve tests', () => {
         );
         // console.log("domain: ", domain)
         expect(domain).toStrictEqual(expect.stringContaining('miester'));
+    });
+    it('should perform retrieval of nft nameAccount owner of legendary.abc', async () => {
+        const solver = new TldSolve(connection);
+        const domainOwner = await solver.getOwnerFromDomain('legendary.abc');
+        // console.log("owner: ", owner?.toBase58())
+        expect(domainOwner?.toBase58()).toStrictEqual(
+            expect.stringContaining(owner.toBase58()),
+        );
     });
 });

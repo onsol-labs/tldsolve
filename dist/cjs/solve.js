@@ -34,21 +34,12 @@ var __awaiter =
             );
         });
     };
-var __importDefault =
-    (this && this.__importDefault) ||
-    function (mod) {
-        return mod && mod.__esModule ? mod : { default: mod };
-    };
 Object.defineProperty(exports, '__esModule', { value: true });
 exports.TldSolve = void 0;
-const nfts_1 = require('./metaplex/nfts');
 const spl_name_service_1 = require('@bonfida/spl-name-service');
 const tldparser_1 = require('@onsol/tldparser');
 const web3_js_1 = require('@solana/web3.js');
 const pda_1 = require('./pda');
-const p_limit_1 = __importDefault(require('p-limit'));
-const nft_record_1 = require('./types/nft_record');
-const utils_1 = require('./utils');
 const protocol_1 = require('./types/protocol');
 /**
  * TldSolve, solves for ans and sns domains.
@@ -96,7 +87,7 @@ class TldSolve {
         });
     }
     /**
-     * resolves any domain name.
+     * resolves any domain name to its raw state.
      *
      * @async
      * @param {string} domain to be resolved.
@@ -152,15 +143,9 @@ class TldSolve {
                 return registry.owner;
             }
             // ans
-            const { pubkey } = yield (0, tldparser_1.getDomainKey)(domain);
-            const nameRecordHeader =
-                yield tldparser_1.NameRecordHeader.fromAccountAddress(
-                    this.connection,
-                    pubkey,
-                );
-            return nameRecordHeader === null || nameRecordHeader === void 0
-                ? void 0
-                : nameRecordHeader.owner;
+            const parser = new tldparser_1.TldParser(this.connection);
+            const owner = yield parser.getOwnerFromDomainTld(domain);
+            return owner;
         });
     }
     /**
@@ -361,197 +346,6 @@ class TldSolve {
                     );
                     return domainName;
             }
-        });
-    }
-    /**
-     * Batch resolve any ANS domains held by the userAccount
-     *
-     * @async
-     * @param {(PublicKey | string)} userAccount domain owner
-     * @param {?string} [heliusApiKey] optional helius api key.
-     * @param {('abc' | 'bonk' | 'poor')} [tld='abc']
-     * @param {number} [limitRPS=10] limits depend on your rpc connection rps limit/3.
-     * @returns {(Promise<Domain[] | undefined>)}
-     */
-    batchResolveANSDomains(
-        userAccount,
-        heliusApiKey,
-        tld = 'abc',
-        limitRPS = 10,
-    ) {
-        return __awaiter(this, void 0, void 0, function* () {
-            if (typeof userAccount == 'string') {
-                userAccount = new web3_js_1.PublicKey(userAccount);
-            }
-            const [tldHouse] = (0, pda_1.findTldHouse)('.' + tld);
-            let accounts = [];
-            const ansDomains = yield this.getAllDomainsFromUserFromTld(
-                userAccount,
-                tld,
-            );
-            if (!ansDomains) return;
-            accounts = ansDomains.map(keys => keys.toString());
-            let nftRecords = [];
-            let activeNfts = [];
-            const limit = (0, p_limit_1.default)(limitRPS);
-            if (heliusApiKey) {
-                const [nameHouse] = (0, pda_1.findNameHouse)(tldHouse);
-                const [tldCollection] = (0, pda_1.findCollectionMint)(tldHouse);
-                const userNfts = yield (0, nfts_1.getParsedNftAccountsByOwner)(
-                    this.connection,
-                    userAccount,
-                    heliusApiKey,
-                );
-                activeNfts = userNfts.filter(t => {
-                    var _a, _b, _c, _d, _e;
-                    return (
-                        ((_a =
-                            t === null || t === void 0
-                                ? void 0
-                                : t.onChainData) === null || _a === void 0
-                            ? void 0
-                            : _a.collection) &&
-                        ((_b =
-                            t === null || t === void 0
-                                ? void 0
-                                : t.onChainData) === null || _b === void 0
-                            ? void 0
-                            : _b.collection.verified) &&
-                        // domains verified collection.
-                        ((_e =
-                            (_d =
-                                (_c =
-                                    t === null || t === void 0
-                                        ? void 0
-                                        : t.onChainData) === null ||
-                                _c === void 0
-                                    ? void 0
-                                    : _c.collection) === null || _d === void 0
-                                ? void 0
-                                : _d.key) === null || _e === void 0
-                            ? void 0
-                            : _e.toString()) === tldCollection.toString()
-                    );
-                });
-                const nftRecordsSet = new Set();
-                const activeRecordPromises = activeNfts.map(activeAccount =>
-                    limit(() =>
-                        __awaiter(this, void 0, void 0, function* () {
-                            var _a;
-                            let domain =
-                                (_a = activeAccount.offChainData) === null ||
-                                _a === void 0
-                                    ? void 0
-                                    : _a.name;
-                            if (!domain) {
-                                domain = activeAccount.onChainData.data.name;
-                            }
-                            const { pubkey: nameAccount } = yield (0,
-                            tldparser_1.getDomainKey)(`${domain}.${tld}`);
-                            const [nftRecordAccount] = (0,
-                            pda_1.findNameRecord)(nameAccount, nameHouse);
-                            const nftRecordData =
-                                yield nft_record_1.NftRecord.fromAccountAddress(
-                                    this.connection,
-                                    nftRecordAccount,
-                                );
-                            nftRecordsSet.add(nftRecordData);
-                        }),
-                    ),
-                );
-                yield Promise.all(activeRecordPromises);
-                nftRecords = [...nftRecordsSet.values()];
-            }
-            let nameAccountsNftRecords = [];
-            if (nftRecords) {
-                nameAccountsNftRecords =
-                    nftRecords === null || nftRecords === void 0
-                        ? void 0
-                        : nftRecords.map(nftRecord =>
-                              nftRecord.nameAccount.toString(),
-                          );
-            }
-            const fetchableAccounts = [];
-            [...nameAccountsNftRecords, ...accounts].forEach(keys =>
-                fetchableAccounts.push(new web3_js_1.PublicKey(keys)),
-            );
-            const chunkedFetchableAccounts = (0, utils_1.chunkArrayPublicKeys)(
-                fetchableAccounts,
-                100,
-            );
-            const fetchedAccountDetails = [];
-            for (let fetchableAccountsChunked in chunkedFetchableAccounts) {
-                const accounts = yield this.connection.getMultipleAccountsInfo(
-                    chunkedFetchableAccounts[fetchableAccountsChunked],
-                );
-                const promises = accounts.map((account, index) =>
-                    limit(() =>
-                        __awaiter(this, void 0, void 0, function* () {
-                            var _b, _c;
-                            if (
-                                !(account === null || account === void 0
-                                    ? void 0
-                                    : account.data)
-                            )
-                                return;
-                            const domainRecord =
-                                tldparser_1.NameRecordHeader.fromAccountInfo(
-                                    account,
-                                );
-                            if (!domainRecord) return;
-                            const domainName =
-                                (_b = yield this.reverseLookupNameAccount(
-                                    chunkedFetchableAccounts[
-                                        fetchableAccountsChunked
-                                    ][index],
-                                )) === null || _b === void 0
-                                    ? void 0
-                                    : _b.trim();
-                            let nftDetails = { isNft: false };
-                            try {
-                                if (
-                                    heliusApiKey &&
-                                    nftRecords.length > 0 &&
-                                    ((_c = nftRecords[index]) === null ||
-                                    _c === void 0
-                                        ? void 0
-                                        : _c.nftMintAccount)
-                                ) {
-                                    nftDetails = {
-                                        isNft: true,
-                                        nft: nftRecords[index].nftMintAccount,
-                                        metadata: activeNfts[index],
-                                    };
-                                }
-                            } catch (_d) {}
-                            const domainDetails = Object.assign(
-                                {
-                                    parentName: domainRecord.parentName,
-                                    owner: domainRecord.owner,
-                                    expiresAt: domainRecord.expiresAt,
-                                    domainName: domainName,
-                                    domainAccount:
-                                        chunkedFetchableAccounts[
-                                            fetchableAccountsChunked
-                                        ][index],
-                                },
-                                nftDetails,
-                            );
-                            fetchedAccountDetails.push(domainDetails);
-                        }),
-                    ),
-                );
-                yield Promise.all(promises);
-            }
-            if (fetchedAccountDetails.length > 0) {
-                fetchedAccountDetails.sort((a, b) =>
-                    a.domainName.localeCompare(b.domainName, undefined, {
-                        numeric: true,
-                        sensitivity: 'base',
-                    }),
-                );
-            }
-            return fetchedAccountDetails;
         });
     }
 }
